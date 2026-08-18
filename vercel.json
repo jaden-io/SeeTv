@@ -1,11 +1,13 @@
 {
+  "version": 2,
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/index.js" },
-    { "source": "/",           "destination": "/public/index.html" },
-    { "source": "/watch",      "destination": "/public/watch.html" },
-    { "source": "/browse",     "destination": "/public/browse.html" },
-    { "source": "/person/:id", "destination": "/public/person.html" },
-    { "source": "/docs",       "destination": "/public/docs.html" },
-    { "source": "/analytics",  "destination": "/public/analytics.html" }
+    { "source": "/public/:path*", "destination": "/:path*" },
+    { "source": "/watch", "destination": "/watch.html" },
+    { "source": "/browse", "destination": "/browse.html" },
+    { "source": "/person/:id", "destination": "/person.html" },
+    { "source": "/docs", "destination": "/docs.html" },
+    { "source": "/analytics", "destination": "/analytics.html" },
+    { "source": "/", "destination": "/index.html" }
   ]
 }
