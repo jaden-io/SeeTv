@@ -3,307 +3,60 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>StreamVault — Watch Free</title>
-<link rel="stylesheet" href="/public/css/globals.css">
+<meta name="theme-color" content="#050505">
+<title>SeeTv — Watch Movies & Shows</title>
+<link rel="stylesheet" href="/css/globals.css">
 <style>
-.hero {
-  position: relative;
-  height: 80vh;
-  min-height: 520px;
-  display: flex;
-  align-items: flex-end;
-  padding-bottom: 64px;
-  overflow: hidden;
-}
-.hero-bg {
-  position: absolute;
-  inset: 0;
-  background-size: cover;
-  background-position: center top;
-  transform: scale(1.05);
-  transition: background-image 0.8s ease;
-}
-.hero-gradient {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, var(--bg-0) 0%, rgba(8,10,15,0.6) 50%, rgba(8,10,15,0.2) 100%);
-}
-.hero-content {
-  position: relative;
-  z-index: 1;
-  max-width: 600px;
-}
-.hero-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 16px;
-}
-.hero-tag::before {
-  content: '';
-  width: 20px;
-  height: 2px;
-  background: var(--accent);
-}
-.hero-title {
-  font-family: var(--font-display);
-  font-size: clamp(2.5rem, 5vw, 4rem);
-  line-height: 1;
-  letter-spacing: 0.04em;
-  margin-bottom: 16px;
-}
-.hero-meta {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-  color: var(--text-1);
-  font-size: 0.875rem;
-}
-.hero-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--text-2); }
-.hero-overview {
-  color: var(--text-1);
-  font-size: 0.95rem;
-  line-height: 1.7;
-  margin-bottom: 28px;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.hero-actions { display: flex; gap: 12px; }
-.hero-indicators {
-  position: absolute;
-  bottom: 24px;
-  right: 32px;
-  display: flex;
-  gap: 6px;
-  z-index: 1;
-}
-.hero-dot-nav {
-  width: 24px; height: 3px;
-  border-radius: 2px;
-  background: rgba(255,255,255,0.3);
-  cursor: pointer;
-  transition: background var(--transition), width var(--transition);
-}
-.hero-dot-nav.active { background: var(--accent); width: 40px; }
-
-.section { padding: 48px 0; }
-.section + .section { padding-top: 0; }
-
-.row-scroll {
-  display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  padding-bottom: 8px;
-  scroll-snap-type: x mandatory;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.row-scroll::-webkit-scrollbar { display: none; }
-.row-scroll .card {
-  flex: 0 0 160px;
-  scroll-snap-align: start;
-}
-
-.filter-bar {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 24px;
-}
-.filter-pill {
-  padding: 6px 16px;
-  border-radius: 99px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  border: 1px solid var(--border);
-  color: var(--text-1);
-  background: var(--bg-2);
-  cursor: pointer;
-  transition: all var(--transition);
-}
-.filter-pill:hover,
-.filter-pill.active {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: var(--accent-dim);
-}
-
-.card-hover-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 60%);
-  opacity: 0;
-  transition: opacity var(--transition);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 12px;
-  gap: 8px;
-}
-.card:hover .card-hover-overlay { opacity: 1; }
-
-.play-btn-sm {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  background: var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform var(--transition);
-}
-.card:hover .play-btn-sm { transform: scale(1.1); }
+.hero{position:relative;height:86vh;min-height:580px;display:flex;align-items:flex-end;padding-bottom:72px;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background-size:cover;background-position:center top;transform:scale(1.03);transition:background-image .8s ease}
+.hero-gradient{position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,5,5,.96) 0%,rgba(5,5,5,.52) 42%,rgba(5,5,5,.08) 72%),linear-gradient(to top,#050505 0%,rgba(5,5,5,.55) 32%,transparent 68%)}
+.hero-content{position:relative;z-index:1;max-width:680px}.hero-tag{display:inline-flex;align-items:center;gap:8px;font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#fff;margin-bottom:18px}.hero-tag:before{content:'';width:28px;height:3px;background:var(--accent)}
+.hero-title{font-size:clamp(2.7rem,6vw,5.2rem);font-weight:800;letter-spacing:-.055em;line-height:.96;margin-bottom:18px;text-shadow:0 3px 24px rgba(0,0,0,.5)}.hero-meta{display:flex;align-items:center;gap:12px;margin-bottom:18px;color:#fff;font-size:.88rem;font-weight:600}.hero-dot{width:4px;height:4px;border-radius:50%;background:#999}.hero-overview{color:#e5e5e5;font-size:1rem;line-height:1.65;margin-bottom:26px;max-width:620px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.hero-actions{display:flex;gap:10px;flex-wrap:wrap}
+.hero-indicators{position:absolute;bottom:28px;right:4vw;display:flex;gap:6px;z-index:2}.hero-dot-nav{width:22px;height:3px;background:rgba(255,255,255,.38);cursor:pointer;transition:all var(--transition)}.hero-dot-nav.active{background:var(--accent);width:44px}
+.section{padding:30px 0}.section+.section{padding-top:4px}.row-scroll{display:flex;gap:12px;overflow-x:auto;padding:5px 2px 22px;scroll-snap-type:x mandatory;scrollbar-width:none}.row-scroll::-webkit-scrollbar{display:none}.row-scroll .card{flex:0 0 170px;scroll-snap-align:start}.status{padding:16px;color:var(--text-1);font-size:.9rem}
+@media(max-width:700px){.hero{height:76vh;min-height:520px;padding-bottom:48px}.hero-title{font-size:clamp(2.5rem,11vw,4rem)}.hero-overview{font-size:.92rem}.row-scroll .card{flex-basis:135px}.hero-indicators{bottom:16px}}
 </style>
 </head>
 <body>
-
 <nav class="nav">
-  <a href="/" class="nav-logo">STREAM<span>VAULT</span></a>
+  <a href="/" class="nav-logo">SEE<span>TV</span></a>
   <div class="nav-links">
     <a href="/" class="nav-link active">Home</a>
     <a href="/browse?type=movie" class="nav-link">Movies</a>
     <a href="/browse?type=tv" class="nav-link">TV Shows</a>
-    <a href="/docs" class="nav-link">API Docs</a>
-    <a href="/analytics" class="nav-link">Analytics</a>
+    <a href="/browse?sort=trending" class="nav-link">Trending</a>
   </div>
   <div class="nav-search">
-    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-    <input id="nav-search" type="text" placeholder="Search movies, shows, people...">
+    <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input id="nav-search" type="search" placeholder="Search titles..." aria-label="Search movies and shows">
   </div>
 </nav>
 
+<main>
 <div class="hero" id="hero">
-  <div class="hero-bg" id="hero-bg"></div>
-  <div class="hero-gradient"></div>
+  <div class="hero-bg" id="hero-bg"></div><div class="hero-gradient"></div>
   <div class="page-wrap hero-content" style="width:100%">
     <div class="hero-tag" id="hero-tag">Trending Now</div>
-    <h1 class="hero-title" id="hero-title">
-      <div class="skeleton" style="height:3rem;width:60%;border-radius:8px"></div>
-    </h1>
-    <div class="hero-meta" id="hero-meta"></div>
-    <p class="hero-overview" id="hero-overview"></p>
-    <div class="hero-actions" id="hero-actions"></div>
+    <h1 class="hero-title" id="hero-title"><span class="skeleton" style="display:block;height:4rem;width:55%;border-radius:6px"></span></h1>
+    <div class="hero-meta" id="hero-meta"></div><p class="hero-overview" id="hero-overview"></p><div class="hero-actions" id="hero-actions"></div>
   </div>
   <div class="hero-indicators" id="hero-indicators"></div>
 </div>
 
 <div class="page-wrap">
-  <section class="section">
-    <div class="section-header">
-      <h2 class="section-title">Trending Movies</h2>
-      <a href="/browse?type=movie&sort=trending" class="btn btn-ghost" style="font-size:.8rem;padding:6px 14px">See all</a>
-    </div>
-    <div class="row-scroll" id="movies-trending"></div>
-  </section>
-
-  <section class="section">
-    <div class="section-header">
-      <h2 class="section-title">Popular TV Shows</h2>
-      <a href="/browse?type=tv&sort=popular" class="btn btn-ghost" style="font-size:.8rem;padding:6px 14px">See all</a>
-    </div>
-    <div class="row-scroll" id="tv-popular"></div>
-  </section>
-
-  <section class="section">
-    <div class="section-header">
-      <h2 class="section-title">Top Rated All Time</h2>
-      <a href="/browse?type=movie&sort=top_rated" class="btn btn-ghost" style="font-size:.8rem;padding:6px 14px">See all</a>
-    </div>
-    <div class="row-scroll" id="movies-top"></div>
-  </section>
-
-  <section class="section">
-    <div class="section-header">
-      <h2 class="section-title">Now In Cinemas</h2>
-      <a href="/browse?type=movie&sort=now_playing" class="btn btn-ghost" style="font-size:.8rem;padding:6px 14px">See all</a>
-    </div>
-    <div class="row-scroll" id="movies-now"></div>
-  </section>
+  <section class="section"><div class="section-header"><h2 class="section-title">Trending Movies</h2><a href="/browse?type=movie&sort=trending" class="btn btn-ghost">See all</a></div><div class="row-scroll" id="movies-trending"><div class="status">Loading...</div></div></section>
+  <section class="section"><div class="section-header"><h2 class="section-title">Popular TV Shows</h2><a href="/browse?type=tv&sort=popular" class="btn btn-ghost">See all</a></div><div class="row-scroll" id="tv-popular"><div class="status">Loading...</div></div></section>
+  <section class="section"><div class="section-header"><h2 class="section-title">Top Rated</h2><a href="/browse?type=movie&sort=top_rated" class="btn btn-ghost">See all</a></div><div class="row-scroll" id="movies-top"><div class="status">Loading...</div></div></section>
+  <section class="section"><div class="section-header"><h2 class="section-title">Now Playing</h2><a href="/browse?type=movie&sort=now_playing" class="btn btn-ghost">See all</a></div><div class="row-scroll" id="movies-now"><div class="status">Loading...</div></div></section>
 </div>
-
-<script src="/public/js/config.js"></script>
-<script src="/public/js/api.js"></script>
-<script src="/public/js/ui.js"></script>
+</main>
+<script src="/js/config.js"></script><script src="/js/api.js"></script><script src="/js/ui.js"></script>
 <script>
-var heroItems = [];
-var heroIdx   = 0;
-var heroTimer = null;
-
-async function init() {
-  const [trending, tvPop, topRated, nowPlaying] = await Promise.all([
-    API.movie.trending(),
-    API.tv.popular(),
-    API.movie.topRated(),
-    API.movie.nowPlaying(),
-  ]);
-
-  heroItems = (trending?.results || []).slice(0, 5);
-  renderHeroIndicators();
-  setHero(0);
-  heroTimer = setInterval(() => setHero((heroIdx + 1) % heroItems.length), 6000);
-
-  renderRow('movies-trending', trending?.results || [], 'movie');
-  renderRow('tv-popular',      tvPop?.results     || [], 'tv');
-  renderRow('movies-top',      topRated?.results  || [], 'movie');
-  renderRow('movies-now',      nowPlaying?.results || [], 'movie');
-}
-
-function setHero(idx) {
-  heroIdx = idx;
-  const item = heroItems[idx];
-  if (!item) return;
-
-  const bg     = item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : '';
-  const title  = item.title || item.name || '';
-  const year   = (item.release_date || item.first_air_date || '').slice(0, 4);
-  const rating = item.vote_average ? item.vote_average.toFixed(1) : '';
-  const isTv   = !!item.name;
-
-  document.getElementById('hero-bg').style.backgroundImage = `url(${bg})`;
-  document.getElementById('hero-tag').textContent = isTv ? 'Trending TV' : 'Trending Movie';
-  document.getElementById('hero-title').textContent = title;
-  document.getElementById('hero-overview').textContent = item.overview || '';
-  document.getElementById('hero-meta').innerHTML = `
-    ${year ? `<span>${year}</span><div class="hero-dot"></div>` : ''}
-    ${rating ? `<span class="rating"><svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>${rating}</span><div class="hero-dot"></div>` : ''}
-    <span>${item.genre_ids?.length ? 'Action' : ''}</span>
-  `;
-  document.getElementById('hero-actions').innerHTML = `
-    <a href="/watch?id=${item.id}${isTv ? '&s=1&e=1' : ''}" class="btn btn-primary">
-      <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg>
-      Watch Now
-    </a>
-    <a href="/browse?id=${item.id}&type=${isTv ? 'tv' : 'movie'}" class="btn btn-ghost">More Info</a>
-  `;
-
-  document.querySelectorAll('.hero-dot-nav').forEach((d, i) => d.classList.toggle('active', i === idx));
-}
-
-function renderHeroIndicators() {
-  const el = document.getElementById('hero-indicators');
-  el.innerHTML = heroItems.map((_, i) => `<div class="hero-dot-nav${i===0?' active':''}" onclick="clearInterval(heroTimer);setHero(${i})"></div>`).join('');
-}
-
-function renderRow(containerId, items, type) {
-  const el = document.getElementById(containerId);
-  el.innerHTML = items.slice(0, 20).map(item => UI.cardHtml(item, type)).join('');
-}
-
-document.getElementById('nav-search').addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    const q = e.target.value.trim();
-    if (q) window.location = `/browse?q=${encodeURIComponent(q)}`;
-  }
-});
-
-init();
+var heroItems=[],heroIdx=0,heroTimer=null;
+async function init(){try{const [trending,tvPop,topRated,nowPlaying]=await Promise.all([API.movie.trending(),API.tv.popular(),API.movie.topRated(),API.movie.nowPlaying()]);heroItems=(trending&&trending.results||[]).slice(0,5);renderHeroIndicators();if(heroItems.length){setHero(0);heroTimer=setInterval(function(){setHero((heroIdx+1)%heroItems.length)},6500)}renderRow('movies-trending',trending&&trending.results||[],'movie');renderRow('tv-popular',tvPop&&tvPop.results||[],'tv');renderRow('movies-top',topRated&&topRated.results||[],'movie');renderRow('movies-now',nowPlaying&&nowPlaying.results||[],'movie')}catch(error){console.error('SeeTv failed to load:',error);document.querySelectorAll('.row-scroll').forEach(function(el){el.innerHTML='<div class="status">Could not load titles. Please refresh and try again.</div>'});document.getElementById('hero-title').textContent='Welcome to SeeTv';document.getElementById('hero-overview').textContent='Discover movies and TV shows in one premium streaming experience.'}}
+function setHero(idx){heroIdx=idx;var item=heroItems[idx];if(!item)return;var bg=item.backdrop_path?'https://image.tmdb.org/t/p/w1280'+item.backdrop_path:'';var title=item.title||item.name||'';var year=(item.release_date||item.first_air_date||'').slice(0,4);var rating=item.vote_average?item.vote_average.toFixed(1):'';var isTv=!!item.name;document.getElementById('hero-bg').style.backgroundImage=bg?'url('+bg+')':'';document.getElementById('hero-tag').textContent=isTv?'Trending Series':'Trending Movie';document.getElementById('hero-title').textContent=title;document.getElementById('hero-overview').textContent=item.overview||'';document.getElementById('hero-meta').innerHTML=(year?'<span>'+year+'</span><div class="hero-dot"></div>':'')+(rating?'<span class="rating">★ '+rating+'</span><div class="hero-dot"></div>':'')+'<span>'+ (isTv?'Series':'Movie')+'</span>';document.getElementById('hero-actions').innerHTML='<a href="/watch?id='+item.id+(isTv?'&s=1&e=1':'')+'" class="btn btn-primary"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg> Watch Now</a><a href="/browse?id='+item.id+'&type='+(isTv?'tv':'movie')+'" class="btn btn-ghost">More Info</a>';document.querySelectorAll('.hero-dot-nav').forEach(function(d,i){d.classList.toggle('active',i===idx)})}
+function renderHeroIndicators(){var el=document.getElementById('hero-indicators');el.innerHTML=heroItems.map(function(_,i){return '<button class="hero-dot-nav'+(i===0?' active':'')+'" aria-label="Show featured title '+(i+1)+'" data-index="'+i+'"></button>'}).join('');el.querySelectorAll('[data-index]').forEach(function(button){button.addEventListener('click',function(){clearInterval(heroTimer);setHero(Number(button.dataset.index))})})}
+function renderRow(id,items,type){var el=document.getElementById(id);if(!items.length){el.innerHTML='<div class="status">No titles available right now.</div>';return}el.innerHTML=items.slice(0,20).map(function(item){return UI.cardHtml(item,type)}).join('')}
+document.getElementById('nav-search').addEventListener('keydown',function(e){if(e.key==='Enter'){var q=e.target.value.trim();if(q)window.location='/browse?q='+encodeURIComponent(q)}});init();
 </script>
-</body>
-</html>
+</body></html>
