@@ -1,6 +1,8 @@
 {
   "version": 2,
   "rewrites": [
+    { "source": "/api/stream", "destination": "/api/stream.js" },
+    { "source": "/api/proxy", "destination": "/api/stream.js" },
     { "source": "/api/:path*", "destination": "/api/index.js" },
     { "source": "/public/:path*", "destination": "/:path*" },
     { "source": "/watch", "destination": "/watch.html" },
