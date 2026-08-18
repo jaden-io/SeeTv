@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Person — StreamVault</title>
+<link rel="stylesheet" href="/public/css/globals.css">
+<style>
+.person-hero {
+  padding-top: 96px;
+  padding-bottom: 48px;
+  background: linear-gradient(to bottom, var(--bg-1) 0%, var(--bg-0) 100%);
+  border-bottom: 1px solid var(--border);
+}
+.person-flex {
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+}
+.person-photo {
+  width: 220px;
+  flex-shrink: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+.person-photo img { width: 100%; display: block; }
+.person-info { flex: 1; }
+.person-dept {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+.person-name {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  letter-spacing: .04em;
+  line-height: 1;
+  margin-bottom: 16px;
+}
+.person-meta {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  font-size: .875rem;
+  color: var(--text-1);
+}
+.meta-item { display: flex; flex-direction: column; gap: 4px; }
+.meta-label { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
+.meta-value { color: var(--text-0); font-weight: 500; }
+.person-bio {
+  color: var(--text-1);
+  line-height: 1.8;
+  font-size: .95rem;
+  max-width: 720px;
+}
+.person-bio.collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.bio-toggle {
+  margin-top: 8px;
+  font-size: .8rem;
+  color: var(--accent);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+}
+
+.credits-section { padding: 48px 0; }
+.credits-tabs { display: flex; gap: 4px; margin-bottom: 24px; }
+.cr-tab {
+  padding: 8px 18px;
+  border-radius: var(--radius-sm);
+  font-size: .8rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--text-1);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.cr-tab.active { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+
+@media (max-width: 768px) {
+  .person-flex { flex-direction: column; }
+  .person-photo { width: 140px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/" class="nav-logo">STREAM<span>VAULT</span></a>
+  <div class="nav-links">
+    <a href="/" class="nav-link">Home</a>
+    <a href="/browse?type=movie" class="nav-link">Movies</a>
+    <a href="/browse?type=tv" class="nav-link">TV Shows</a>
+  </div>
+</nav>
+
+<div class="person-hero">
+  <div class="page-wrap">
+    <div class="person-flex" id="person-flex">
+      <div class="person-photo">
+        <div class="skeleton" style="aspect-ratio:2/3;width:100%"></div>
+      </div>
+      <div class="person-info">
+        <div class="skeleton" style="height:1rem;width:120px;margin-bottom:12px"></div>
+        <div class="skeleton" style="height:3rem;width:60%;margin-bottom:16px"></div>
+        <div class="skeleton" style="height:.8rem;width:100%;margin-bottom:8px"></div>
+        <div class="skeleton" style="height:.8rem;width:90%;margin-bottom:8px"></div>
+        <div class="skeleton" style="height:.8rem;width:80%"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page-wrap credits-section">
+  <div class="section-header">
+    <h2 class="section-title">Filmography</h2>
+  </div>
+  <div class="credits-tabs">
+    <button class="cr-tab active" data-tab="movies" onclick="switchCreditsTab('movies')">Movies</button>
+    <button class="cr-tab" data-tab="tv" onclick="switchCreditsTab('tv')">TV Shows</button>
+    <button class="cr-tab" data-tab="images" onclick="switchCreditsTab('images')">Photos</button>
+  </div>
+  <div id="credits-container"></div>
+</div>
+
+<script src="/public/js/config.js"></script>
+<script src="/public/js/api.js"></script>
+<script src="/public/js/ui.js"></script>
+<script>
+var personId   = window.location.pathname.split('/').pop();
+var personData = null;
+
+async function init() {
+  const res  = await fetch(`/api/person/${personId}?tmdb_key=${CONFIG.TMDB_KEY}`);
+  const json = await res.json();
+  if (!json.success) return;
+  personData = json.data;
+  renderPerson(personData);
+  renderCredits('movies');
+}
+
+function renderPerson(d) {
+  const photo   = d.profile_path ? `https://image.tmdb.org/t/p/w342${d.profile_path}` : '';
+  const age     = d.birthday ? getAge(d.birthday, d.deathday) : '';
+  const bioShort = (d.biography || '').length > 500;
+
+  document.getElementById('person-flex').innerHTML = `
+    <div class="person-photo">
+      ${photo ? `<img src="${photo}" alt="${d.name}">` : '<div class="skeleton" style="aspect-ratio:2/3;width:100%"></div>'}
+    </div>
+    <div class="person-info">
+      <div class="person-dept">${d.known_for_department || 'Actor'}</div>
+      <h1 class="person-name">${d.name}</h1>
+      <div class="person-meta">
+        ${d.birthday ? `<div class="meta-item"><div class="meta-label">Born</div><div class="meta-value">${formatDate(d.birthday)}</div></div>` : ''}
+        ${age ? `<div class="meta-item"><div class="meta-label">Age</div><div class="meta-value">${age}</div></div>` : ''}
+        ${d.place_of_birth ? `<div class="meta-item"><div class="meta-label">Birthplace</div><div class="meta-value">${d.place_of_birth}</div></div>` : ''}
+        ${d.deathday ? `<div class="meta-item"><div class="meta-label">Died</div><div class="meta-value">${formatDate(d.deathday)}</div></div>` : ''}
+      </div>
+      ${d.biography ? `
+        <p class="person-bio ${bioShort ? 'collapsed' : ''}" id="person-bio">${d.biography}</p>
+        ${bioShort ? `<button class="bio-toggle" onclick="toggleBio()">Read more</button>` : ''}
+      ` : ''}
+    </div>
+  `;
+}
+
+var bioExpanded = false;
+function toggleBio() {
+  const el  = document.getElementById('person-bio');
+  const btn = document.querySelector('.bio-toggle');
+  bioExpanded = !bioExpanded;
+  el.classList.toggle('collapsed', !bioExpanded);
+  btn.textContent = bioExpanded ? 'Show less' : 'Read more';
+}
+
+function switchCreditsTab(tab) {
+  document.querySelectorAll('.cr-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  renderCredits(tab);
+}
+
+function renderCredits(tab) {
+  const el = document.getElementById('credits-container');
+  if (!personData) return;
+
+  if (tab === 'images') {
+    const profiles = personData.images?.profiles || [];
+    el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px">
+      ${profiles.slice(0, 30).map(img => `
+        <div style="border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--border)">
+          <img src="https://image.tmdb.org/t/p/w342${img.file_path}" style="width:100%;display:block" loading="lazy">
+        </div>
+      `).join('')}
+    </div>`;
+    return;
+  }
+
+  const credits = tab === 'movies'
+    ? (personData.movie_credits?.cast || []).sort((a,b) => new Date(b.release_date||0) - new Date(a.release_date||0))
+    : (personData.tv_credits?.cast || []).sort((a,b) => new Date(b.first_air_date||0) - new Date(a.first_air_date||0));
+
+  el.innerHTML = `<div class="grid-responsive">
+    ${credits.slice(0, 40).map(item => UI.cardHtml(item, tab === 'movies' ? 'movie' : 'tv')).join('')}
+  </div>`;
+}
+
+function getAge(birthday, deathday) {
+  const end  = deathday ? new Date(deathday) : new Date();
+  const born = new Date(birthday);
+  return Math.floor((end - born) / (365.25 * 24 * 60 * 60 * 1000));
+}
+
+function formatDate(dateStr) {
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+init();
+</script>
+</body>
+</html>

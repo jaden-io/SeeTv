@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Watch — StreamVault</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
+<link rel="stylesheet" href="/public/css/globals.css">
+<style>
+body { background: #000; overflow-x: hidden; }
+
+.player-wrap {
+  position: relative;
+  width: 100%;
+  background: #000;
+  min-height: 56.25vw;
+  max-height: 80vh;
+}
+
+#player-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  min-height: 56.25vw;
+  max-height: 80vh;
+}
+
+video#v {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  max-height: 80vh;
+}
+
+.player-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  transition: opacity 0.4s;
+}
+
+.player-overlay.hidden { opacity: 0; pointer-events: none; }
+
+.loader-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 0.6s;
+  filter: blur(8px) brightness(0.3);
+}
+
+.loader-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.loader-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 3vw, 2rem);
+  letter-spacing: 0.06em;
+  text-align: center;
+  max-width: 500px;
+}
+
+.loader-status {
+  font-size: 0.85rem;
+  color: var(--text-1);
+  letter-spacing: 0.04em;
+  min-height: 20px;
+}
+
+.loader-bar-wrap {
+  width: 200px;
+  height: 3px;
+  background: var(--bg-3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.loader-bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: progress 3s ease-in-out infinite;
+}
+
+@keyframes progress {
+  0%   { width: 0%; transform: translateX(0); }
+  50%  { width: 60%; }
+  100% { width: 100%; }
+}
+
+.error-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: var(--bg-0);
+}
+
+.error-icon { font-size: 3rem; }
+.error-title { font-family: var(--font-display); font-size: 2rem; }
+.error-message { color: var(--text-1); font-size: 0.9rem; max-width: 400px; text-align: center; }
+.error-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+
+.info-panel {
+  background: var(--bg-1);
+  padding: 32px;
+  border-top: 1px solid var(--border);
+}
+
+.info-flex {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+.info-poster {
+  width: 140px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.info-poster img { width: 100%; display: block; }
+
+.info-body { flex: 1; }
+
+.info-title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.info-tagline {
+  color: var(--text-1);
+  font-style: italic;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+}
+
+.info-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+  font-size: 0.85rem;
+  color: var(--text-1);
+}
+
+.info-overview {
+  color: var(--text-0);
+  line-height: 1.75;
+  font-size: 0.95rem;
+  margin-bottom: 20px;
+}
+
+.info-genres { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+
+.season-select {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.ep-select {
+  padding: 10px 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-0);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.episodes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.episode-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.episode-card:hover,
+.episode-card.active { border-color: var(--accent); background: var(--accent-dim); }
+
+.episode-thumb {
+  width: 100px;
+  aspect-ratio: 16/9;
+  border-radius: var(--radius-sm);
+  background: var(--bg-3);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.episode-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.episode-info { flex: 1; min-width: 0; }
+
+.episode-num {
+  font-size: 0.72rem;
+  color: var(--text-2);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.episode-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.episode-overview {
+  font-size: 0.75rem;
+  color: var(--text-1);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cast-row {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.cast-row::-webkit-scrollbar { display: none; }
+
+.cast-card {
+  flex: 0 0 100px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.cast-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  margin: 0 auto 8px;
+  background: var(--bg-3);
+  display: block;
+}
+
+.cast-name { font-size: 0.75rem; font-weight: 600; margin-bottom: 2px; }
+.cast-char { font-size: 0.7rem; color: var(--text-1); }
+
+@media (max-width: 768px) {
+  .info-flex { flex-direction: column; }
+  .info-poster { width: 100px; }
+  .info-panel { padding: 20px 16px; }
+  .episodes-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/" class="nav-logo">STREAM<span>VAULT</span></a>
+  <div class="nav-links">
+    <a href="/" class="nav-link">Home</a>
+    <a href="/browse?type=movie" class="nav-link">Movies</a>
+    <a href="/browse?type=tv" class="nav-link">TV Shows</a>
+  </div>
+</nav>
+
+<div style="padding-top:64px">
+  <div class="player-wrap">
+    <div id="player-container">
+      <video id="v" controls autoplay playsinline></video>
+
+      <div class="player-overlay" id="overlay">
+        <div class="loader-bg" id="loader-bg"></div>
+        <div class="loader-content">
+          <div class="spinner"></div>
+          <div class="loader-title" id="loader-title">Loading stream...</div>
+          <div class="loader-status" id="loader-status">Contacting upstream</div>
+          <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+        </div>
+      </div>
+
+      <div class="error-panel" id="error-panel" style="display:none">
+        <div class="error-icon">⚡</div>
+        <div class="error-title">Stream Unavailable</div>
+        <div class="error-message" id="error-message">Unable to load the stream. Try a fallback source.</div>
+        <div class="error-actions" id="error-actions"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-panel page-wrap" id="info-panel">
+    <div class="info-flex">
+      <div class="info-poster skeleton" style="width:140px;aspect-ratio:2/3" id="info-poster-wrap"></div>
+      <div class="info-body">
+        <div class="skeleton" style="height:2rem;width:50%;margin-bottom:12px"></div>
+        <div class="skeleton" style="height:1rem;width:70%;margin-bottom:8px"></div>
+        <div class="skeleton" style="height:1rem;width:40%"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/public/js/config.js"></script>
+<script src="/public/js/api.js"></script>
+<script>
+var p       = new URLSearchParams(location.search);
+var id      = p.get('id');
+var season  = p.get('s') || p.get('season');
+var episode = p.get('e') || p.get('episode') || '1';
+var isTv    = !!season;
+
+var MESSAGES = [
+  'Contacting upstream...','Resolving HLS manifest...','Warming the pipeline...',
+  'Almost there...','Negotiating tokens...','Decrypting segments...'
+];
+var msgIdx = 0;
+var msgTimer = setInterval(() => {
+  document.getElementById('loader-status').textContent = MESSAGES[++msgIdx % MESSAGES.length];
+}, 2400);
+
+function showPlayer() {
+  clearInterval(msgTimer);
+  document.getElementById('overlay').classList.add('hidden');
+}
+
+function showError(msg) {
+  clearInterval(msgTimer);
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('error-panel').style.display = 'flex';
+  document.getElementById('error-message').textContent = msg || 'Unknown error.';
+  const fallbackUrl = isTv
+    ? `https://vidsrc.xyz/embed/tv?tmdb=${id}&season=${season}&episode=${episode}`
+    : `https://vidsrc.xyz/embed/movie?tmdb=${id}`;
+  document.getElementById('error-actions').innerHTML = `
+    <a href="${fallbackUrl}" target="_blank" class="btn btn-primary">Try Fallback Source</a>
+    <a href="/" class="btn btn-ghost">Go Home</a>
+  `;
+}
+
+function play(rawUrl) {
+  var src = '/api/proxy?url=' + encodeURIComponent(rawUrl);
+  var v   = document.getElementById('v');
+  if (Hls.isSupported()) {
+    var hls = new Hls({ enableWorker: true, maxBufferLength: 30 });
+    hls.loadSource(src);
+    hls.attachMedia(v);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => { showPlayer(); v.play().catch(() => {}); });
+    hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) showError(d.details); });
+  } else if (v.canPlayType('application/vnd.apple.mpegurl')) {
+    v.src = src;
+    v.addEventListener('canplay', showPlayer, { once: true });
+    v.play().catch(e => showError(e.message));
+  } else {
+    showError('HLS not supported in this browser.');
+  }
+}
+
+async function loadStream() {
+  if (!id) return showError('No content ID provided.');
+  const endpoint = isTv
+    ? `/api/tv/${id}/season/${season}/episode/${episode}/stream`
+    : `/api/movie/${id}/stream-info`;
+
+  const needsKey = true;
+  const url = needsKey ? `${endpoint}?tmdb_key=${CONFIG.TMDB_KEY}` : endpoint;
+
+  try {
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (!data.success) return showError(data.error);
+    const streamUrl = data.data.stream_url || data.data.proxied_url;
+    if (!streamUrl) return showError('No stream URL returned.');
+    document.getElementById('loader-title').textContent = data.data.movie?.title || data.data.episode?.name || 'Loading...';
+    play(streamUrl.startsWith('/api') ? streamUrl.replace('/api/proxy?url=', '') : streamUrl);
+    loadInfo(data.data);
+  } catch (e) {
+    showError(e.message);
+  }
+}
+
+function loadInfo(data) {
+  const item    = data.movie || data.episode || {};
+  const isMovie = !!data.movie;
+  const wrap    = document.getElementById('info-panel');
+
+  const genres = item.genres?.map(g => `<span class="tag tag-accent">${g.name}</span>`).join('') || '';
+  const runtime = item.runtime ? `${Math.floor(item.runtime/60)}h ${item.runtime%60}m` : '';
+  const rating  = item.vote_average ? `⭐ ${item.vote_average.toFixed(1)}` : '';
+  const year    = (item.release_date || item.air_date || '').slice(0, 4);
+  const poster  = item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : '';
+
+  if (item.backdrop_path) {
+    const bg = document.getElementById('loader-bg');
+    bg.style.backgroundImage = `url(https://image.tmdb.org/t/p/w1280${item.backdrop_path})`;
+    bg.style.opacity = '1';
+  }
+
+  const cast = item.credits?.cast?.slice(0, 15) || [];
+  const castHtml = cast.map(c => `
+    <div class="cast-card" onclick="window.location='/person/${c.id}'">
+      <img class="cast-avatar" src="${c.profile_path ? 'https://image.tmdb.org/t/p/w185'+c.profile_path : ''}" alt="${c.name}" loading="lazy">
+      <div class="cast-name">${c.name}</div>
+      <div class="cast-char">${c.character || ''}</div>
+    </div>
+  `).join('');
+
+  wrap.innerHTML = `
+    <div class="info-flex">
+      ${poster ? `<div class="info-poster"><img src="${poster}" alt="${item.title||item.name||''}"></div>` : ''}
+      <div class="info-body">
+        <h1 class="info-title">${item.title || item.name || ''}</h1>
+        ${item.tagline ? `<div class="info-tagline">${item.tagline}</div>` : ''}
+        <div class="info-meta">
+          ${year ? `<span>${year}</span>` : ''}
+          ${runtime ? `<span>${runtime}</span>` : ''}
+          ${rating ? `<span>${rating}</span>` : ''}
+          ${item.status ? `<span class="tag tag-green">${item.status}</span>` : ''}
+        </div>
+        ${genres ? `<div class="info-genres">${genres}</div>` : ''}
+        ${item.overview ? `<p class="info-overview">${item.overview}</p>` : ''}
+        ${cast.length ? `
+          <h3 style="margin-bottom:12px;font-size:.875rem;color:var(--text-1);letter-spacing:.06em;text-transform:uppercase">Cast</h3>
+          <div class="cast-row">${castHtml}</div>
+        ` : ''}
+        ${!isMovie && item.seasons ? renderSeasonPicker(item) : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderSeasonPicker(show) {
+  return `
+    <div style="margin-top:24px">
+      <h3 style="font-family:var(--font-display);font-size:1.2rem;margin-bottom:12px;letter-spacing:.04em">Episodes</h3>
+      <div class="season-select">
+        ${show.seasons?.filter(s => s.season_number > 0).map(s => `
+          <button class="ep-select${s.season_number==season?' active':''}" onclick="changeSeason(${s.season_number},${show.id})">
+            Season ${s.season_number}
+          </button>
+        `).join('') || ''}
+      </div>
+      <div id="episodes-container"></div>
+    </div>
+  `;
+}
+
+async function changeSeason(seasonNum, tvId) {
+  season = String(seasonNum);
+  const res  = await fetch(`/api/tv/${tvId}/season/${seasonNum}?tmdb_key=${CONFIG.TMDB_KEY}`);
+  const data = await res.json();
+  const eps  = data.data?.episodes || [];
+  document.getElementById('episodes-container').innerHTML = `
+    <div class="episodes-grid">
+      ${eps.map(ep => `
+        <div class="episode-card${ep.episode_number==episode?' active':''}" onclick="playEpisode(${tvId},${seasonNum},${ep.episode_number})">
+          <div class="episode-thumb">
+            ${ep.still_path ? `<img src="https://image.tmdb.org/t/p/w300${ep.still_path}" alt="Ep ${ep.episode_number}" loading="lazy">` : ''}
+          </div>
+          <div class="episode-info">
+            <div class="episode-num">S${String(seasonNum).padStart(2,'0')} E${String(ep.episode_number).padStart(2,'0')}</div>
+            <div class="episode-title">${ep.name}</div>
+            <div class="episode-overview">${ep.overview || ''}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function playEpisode(tvId, s, e) {
+  window.location = `/watch?id=${tvId}&s=${s}&e=${e}`;
+}
+
+if (!id) {
+  showError('No content ID. Use ?id=550 for a movie or ?id=456&s=1&e=1 for TV.');
+} else {
+  loadStream();
+}
+</script>
+</body>
+</html>

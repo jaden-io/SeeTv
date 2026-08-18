@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>API Docs — StreamVault</title>
+<link rel="stylesheet" href="/public/css/globals.css">
+<style>
+.docs-wrap { display: flex; padding-top: 64px; min-height: 100vh; }
+.docs-sidebar {
+  position: sticky;
+  top: 64px;
+  height: calc(100vh - 64px);
+  width: 240px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 24px 0;
+}
+.sidebar-section { margin-bottom: 8px; }
+.sidebar-heading {
+  padding: 6px 20px;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.sidebar-link {
+  display: block;
+  padding: 7px 20px;
+  font-size: .8rem;
+  color: var(--text-1);
+  cursor: pointer;
+  transition: all var(--transition);
+  border-left: 2px solid transparent;
+}
+.sidebar-link:hover { color: var(--text-0); background: var(--bg-2); }
+.sidebar-link.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-dim); }
+
+.docs-content { flex: 1; padding: 40px 48px; max-width: 900px; }
+.docs-title { font-family: var(--font-display); font-size: 2.5rem; letter-spacing: .04em; margin-bottom: 8px; }
+.docs-sub { color: var(--text-1); margin-bottom: 40px; font-size: .95rem; line-height: 1.6; }
+
+.endpoint {
+  margin-bottom: 40px;
+  padding: 24px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  scroll-margin-top: 80px;
+}
+.ep-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.ep-method {
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  background: rgba(75,206,151,.2);
+  color: var(--green);
+}
+.ep-path {
+  font-family: monospace;
+  font-size: 1rem;
+  color: var(--text-0);
+  font-weight: 600;
+}
+.ep-desc { color: var(--text-1); font-size: .875rem; margin-bottom: 16px; line-height: 1.6; }
+
+.params-table { width: 100%; border-collapse: collapse; font-size: .8rem; margin-bottom: 16px; }
+.params-table th {
+  text-align: left;
+  padding: 8px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  font-size: .7rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.params-table td { padding: 8px 12px; border: 1px solid var(--border); color: var(--text-1); vertical-align: top; }
+.params-table td:first-child { color: var(--accent); font-family: monospace; }
+.required { color: var(--red) !important; font-size: .7rem; font-weight: 700; text-transform: uppercase; }
+
+.code-block {
+  background: var(--bg-0);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  font-family: monospace;
+  font-size: .8rem;
+  line-height: 1.6;
+  color: #9aa3b3;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.code-block .key   { color: #c792ea; }
+.code-block .str   { color: #c3e88d; }
+.code-block .num   { color: #f78c6c; }
+.code-block .bool  { color: #82aaff; }
+
+.section-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 40px 0;
+}
+
+.base-url-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 32px;
+  font-family: monospace;
+  font-size: .9rem;
+  color: var(--accent);
+}
+
+.auth-box {
+  padding: 16px 20px;
+  background: rgba(232,184,75,.08);
+  border: 1px solid rgba(232,184,75,.25);
+  border-radius: var(--radius-sm);
+  margin-bottom: 32px;
+  font-size: .875rem;
+  color: var(--text-1);
+  line-height: 1.7;
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/" class="nav-logo">STREAM<span>VAULT</span></a>
+  <div class="nav-links">
+    <a href="/" class="nav-link">Home</a>
+    <a href="/browse" class="nav-link">Browse</a>
+    <a href="/docs" class="nav-link active">API Docs</a>
+    <a href="/analytics" class="nav-link">Analytics</a>
+  </div>
+</nav>
+
+<div class="docs-wrap">
+  <div class="docs-sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-heading">Overview</div>
+      <a class="sidebar-link" href="#overview">Introduction</a>
+      <a class="sidebar-link" href="#auth">Authentication</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-heading">Stream</div>
+      <a class="sidebar-link" href="#ep-stream">GET /api/stream</a>
+      <a class="sidebar-link" href="#ep-proxy">GET /api/proxy</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-heading">Movies</div>
+      <a class="sidebar-link" href="#ep-movie-detail">GET /api/movie/:id</a>
+      <a class="sidebar-link" href="#ep-movie-stream">GET /api/movie/:id/stream-info</a>
+      <a class="sidebar-link" href="#ep-movie-popular">GET /api/movie/popular</a>
+      <a class="sidebar-link" href="#ep-movie-trending">GET /api/movie/trending</a>
+      <a class="sidebar-link" href="#ep-movie-top">GET /api/movie/top_rated</a>
+      <a class="sidebar-link" href="#ep-movie-now">GET /api/movie/now_playing</a>
+      <a class="sidebar-link" href="#ep-movie-upcoming">GET /api/movie/upcoming</a>
+      <a class="sidebar-link" href="#ep-movie-genres">GET /api/movie/genres</a>
+      <a class="sidebar-link" href="#ep-movie-discover">GET /api/movie/discover</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-heading">TV Shows</div>
+      <a class="sidebar-link" href="#ep-tv-detail">GET /api/tv/:id</a>
+      <a class="sidebar-link" href="#ep-tv-season">GET /api/tv/:id/season/:n</a>
+      <a class="sidebar-link" href="#ep-tv-ep-stream">GET …/episode/:n/stream</a>
+      <a class="sidebar-link" href="#ep-tv-popular">GET /api/tv/popular</a>
+      <a class="sidebar-link" href="#ep-tv-trending">GET /api/tv/trending</a>
+      <a class="sidebar-link" href="#ep-tv-top">GET /api/tv/top_rated</a>
+      <a class="sidebar-link" href="#ep-tv-air">GET /api/tv/on_the_air</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-heading">People</div>
+      <a class="sidebar-link" href="#ep-person">GET /api/person/:id</a>
+      <a class="sidebar-link" href="#ep-person-popular">GET /api/person/popular</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-heading">Search</div>
+      <a class="sidebar-link" href="#ep-search-multi">GET /api/search/multi</a>
+      <a class="sidebar-link" href="#ep-search-movie">GET /api/search/movie</a>
+      <a class="sidebar-link" href="#ep-search-tv">GET /api/search/tv</a>
+      <a class="sidebar-link" href="#ep-search-person">GET /api/search/person</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-heading">System</div>
+      <a class="sidebar-link" href="#ep-health">GET /api/health</a>
+      <a class="sidebar-link" href="#ep-analytics">GET /api/analytics</a>
+    </div>
+  </div>
+
+  <div class="docs-content">
+    <h1 class="docs-title" id="overview">StreamVault API</h1>
+    <p class="docs-sub">A REST API for ad-free streaming resolution and full TMDB data access. All responses are JSON wrapped in a consistent envelope.</p>
+
+    <div class="base-url-box">
+      <span style="color:var(--text-2);font-family:var(--font-body);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em">Base URL</span>
+      <span>https://your-deployment.vercel.app</span>
+    </div>
+
+    <div class="auth-box" id="auth">
+      <strong style="color:var(--text-0)">Authentication</strong><br>
+      Stream endpoints (/api/stream, /api/proxy) require no key.<br>
+      All TMDB endpoints require your TMDB API key — pass it as <code style="color:var(--accent)">?tmdb_key=YOUR_KEY</code> or as the <code style="color:var(--accent)">X-TMDB-Key</code> request header.<br>
+      Get your free key at <a href="https://www.themoviedb.org/settings/api" target="_blank" style="color:var(--accent)">themoviedb.org</a>.
+    </div>
+
+    <p style="font-size:.8rem;color:var(--text-2);margin-bottom:24px">All responses: <code style="color:var(--accent)">{"success": true, "data": {...}}</code> or <code style="color:var(--accent)">{"success": false, "error": "..."}</code></p>
+
+    <div class="section-divider"></div>
+
+    <!-- STREAM -->
+    <div class="endpoint" id="ep-stream">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/stream</span></div>
+      <p class="ep-desc">Resolve a stream URL for a movie or TV episode. Returns a proxied HLS playlist URL.</p>
+      <table class="params-table">
+        <tr><th>Param</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>id</td><td>integer</td><td class="required">required</td><td>TMDB ID of the movie or TV show</td></tr>
+        <tr><td>s</td><td>integer</td><td>optional</td><td>Season number (TV only)</td></tr>
+        <tr><td>e</td><td>integer</td><td>optional</td><td>Episode number (TV only, default 1)</td></tr>
+      </table>
+      <div class="code-block">GET /api/stream?id=550
+→ { "stream_url": "https://...", "proxied_url": "/api/proxy?url=..." }</div>
+    </div>
+
+    <div class="endpoint" id="ep-proxy">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/proxy</span></div>
+      <p class="ep-desc">HLS proxy that rewrites segment URLs to pass through this server, bypassing CORS and hotlink restrictions.</p>
+      <table class="params-table">
+        <tr><th>Param</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>url</td><td>string</td><td class="required">required</td><td>URL-encoded upstream HLS/segment URL</td></tr>
+      </table>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- MOVIES -->
+    <div class="endpoint" id="ep-movie-detail">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/movie/:id</span></div>
+      <p class="ep-desc">Full movie details including credits, videos, images, recommendations, and similar titles.</p>
+      <div class="code-block">GET /api/movie/550?tmdb_key=xxx</div>
+    </div>
+
+    <div class="endpoint" id="ep-movie-stream">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/movie/:id/stream-info</span></div>
+      <p class="ep-desc">Combined endpoint: movie details + resolved stream URL in one request.</p>
+      <div class="code-block">GET /api/movie/550/stream-info?tmdb_key=xxx
+→ { "movie": {...}, "stream_url": "...", "proxied_url": "..." }</div>
+    </div>
+
+    <div class="endpoint" id="ep-movie-popular">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/movie/popular</span></div>
+      <p class="ep-desc">Currently popular movies.</p>
+      <table class="params-table">
+        <tr><th>Param</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>page</td><td>integer</td><td>optional</td><td>Page number (default 1)</td></tr>
+        <tr><td>region</td><td>string</td><td>optional</td><td>ISO 3166-1 region code</td></tr>
+      </table>
+    </div>
+
+    <div class="endpoint" id="ep-movie-trending">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/movie/trending</span></div>
+      <p class="ep-desc">Weekly trending movies.</p>
+    </div>
+
+    <div class="endpoint" id="ep-movie-top">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/movie/top_rated</span></div>
+      <p class="ep-desc">Top rated movies of all time.</p>
+    </div>
+
+    <div class="endpoint" id="ep-movie-now">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/movie/now_playing</span></div>
+      <p class="ep-desc">Movies currently in theaters.</p>
+    </div>
+
+    <div class="endpoint" id="ep-movie-upcoming">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/movie/upcoming</span></div>
+      <p class="ep-desc">Upcoming theatrical releases.</p>
+    </div>
+
+    <div class="endpoint" id="ep-movie-genres">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/movie/genres</span></div>
+      <p class="ep-desc">Full list of movie genre IDs and names.</p>
+    </div>
+
+    <div class="endpoint" id="ep-movie-discover">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/movie/discover</span></div>
+      <p class="ep-desc">Discover movies with filters.</p>
+      <table class="params-table">
+        <tr><th>Param</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>sort_by</td><td>string</td><td>optional</td><td>popularity.desc, vote_average.desc, release_date.desc</td></tr>
+        <tr><td>genres</td><td>string</td><td>optional</td><td>Genre ID(s) comma-separated</td></tr>
+        <tr><td>year</td><td>integer</td><td>optional</td><td>Primary release year</td></tr>
+        <tr><td>min_rating</td><td>number</td><td>optional</td><td>Minimum vote average (0–10)</td></tr>
+        <tr><td>page</td><td>integer</td><td>optional</td><td>Page number</td></tr>
+      </table>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- TV -->
+    <div class="endpoint" id="ep-tv-detail">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/tv/:id</span></div>
+      <p class="ep-desc">Full TV show details including credits, videos, seasons, recommendations.</p>
+    </div>
+
+    <div class="endpoint" id="ep-tv-season">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/tv/:id/season/:season</span></div>
+      <p class="ep-desc">Season details including full episode list with stills and overviews.</p>
+      <div class="code-block">GET /api/tv/456/season/1?tmdb_key=xxx</div>
+    </div>
+
+    <div class="endpoint" id="ep-tv-ep-stream">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/tv/:id/season/:season/episode/:episode/stream</span></div>
+      <p class="ep-desc">Combined: episode details + resolved stream URL.</p>
+      <div class="code-block">GET /api/tv/456/season/1/episode/3/stream?tmdb_key=xxx
+→ { "episode": {...}, "stream_url": "...", "proxied_url": "..." }</div>
+    </div>
+
+    <div class="endpoint" id="ep-tv-popular">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/tv/popular</span></div>
+      <p class="ep-desc">Currently popular TV shows.</p>
+    </div>
+
+    <div class="endpoint" id="ep-tv-trending">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/tv/trending</span></div>
+      <p class="ep-desc">Weekly trending TV shows.</p>
+    </div>
+
+    <div class="endpoint" id="ep-tv-top">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/tv/top_rated</span></div>
+      <p class="ep-desc">Top rated TV shows.</p>
+    </div>
+
+    <div class="endpoint" id="ep-tv-air">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/tv/on_the_air</span></div>
+      <p class="ep-desc">TV shows currently airing.</p>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- PEOPLE -->
+    <div class="endpoint" id="ep-person">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/person/:id</span></div>
+      <p class="ep-desc">Full person details including biography, movie credits, TV credits, images, and external IDs.</p>
+      <div class="code-block">GET /api/person/6193?tmdb_key=xxx</div>
+    </div>
+
+    <div class="endpoint" id="ep-person-popular">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/person/popular</span></div>
+      <p class="ep-desc">Currently popular people.</p>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- SEARCH -->
+    <div class="endpoint" id="ep-search-multi">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/search/multi</span></div>
+      <p class="ep-desc">Search across movies, TV shows, and people simultaneously.</p>
+      <table class="params-table">
+        <tr><th>Param</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>q</td><td>string</td><td class="required">required</td><td>Search query</td></tr>
+        <tr><td>page</td><td>integer</td><td>optional</td><td>Page number</td></tr>
+      </table>
+    </div>
+
+    <div class="endpoint" id="ep-search-movie">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/search/movie</span></div>
+      <p class="ep-desc">Search movies by title.</p>
+    </div>
+
+    <div class="endpoint" id="ep-search-tv">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/search/tv</span></div>
+      <p class="ep-desc">Search TV shows by name.</p>
+    </div>
+
+    <div class="endpoint" id="ep-search-person">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/search/person</span></div>
+      <p class="ep-desc">Search for actors, directors, crew by name.</p>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- SYSTEM -->
+    <div class="endpoint" id="ep-health">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/health</span></div>
+      <p class="ep-desc">System health check. Returns WASM status, uptime, and version.</p>
+      <div class="code-block">{ "status": "ok", "wasm_ready": true, "uptime_seconds": 3600, "version": "2.0.0" }</div>
+    </div>
+
+    <div class="endpoint" id="ep-analytics">
+      <div class="ep-header"><span class="ep-method">GET</span><span class="ep-path">/api/analytics</span></div>
+      <p class="ep-desc">Live request analytics including per-endpoint counts and success rate.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const links = document.querySelectorAll('.sidebar-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { threshold: 0.3 });
+document.querySelectorAll('.endpoint, #overview, #auth').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>

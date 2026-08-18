@@ -1,0 +1,13 @@
+{
+  "name": "streamvault",
+  "version": "2.0.0",
+  "description": "Ad-free streaming API with full TMDB integration",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node tests/api.test.js"
+  },
+  "dependencies": {
+    "libsodium-wrappers": "*"
+  }
+}

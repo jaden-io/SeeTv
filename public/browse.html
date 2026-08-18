@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Browse — StreamVault</title>
+<link rel="stylesheet" href="/public/css/globals.css">
+<style>
+.browse-wrap { padding-top: 96px; }
+.browse-header {
+  margin-bottom: 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.browse-title { font-family: var(--font-display); font-size: 2rem; letter-spacing: .04em; }
+.controls {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+  padding: 16px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.ctrl-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 140px; }
+.ctrl-label { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
+.ctrl-input, .ctrl-select {
+  padding: 8px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-0);
+  font-size: .875rem;
+  outline: none;
+  transition: border-color var(--transition);
+}
+.ctrl-input:focus, .ctrl-select:focus { border-color: rgba(232,184,75,.5); }
+.ctrl-select option { background: var(--bg-2); }
+
+.type-tabs { display: flex; gap: 4px; margin-bottom: 24px; }
+.type-tab {
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--text-1);
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.type-tab.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+  min-height: 400px;
+}
+
+.people-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 20px;
+}
+
+.person-card {
+  text-align: center;
+  cursor: pointer;
+}
+
+.person-img {
+  width: 100%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.person-name { font-size: .875rem; font-weight: 600; }
+.person-known { font-size: .75rem; color: var(--text-1); }
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 40px;
+  padding: 24px 0;
+}
+
+.page-btn {
+  width: 36px; height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  font-size: .875rem;
+  font-weight: 600;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text-0);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.page-btn:hover { border-color: var(--accent); color: var(--accent); }
+.page-btn.active { background: var(--accent); border-color: var(--accent); color: #000; }
+.page-btn:disabled { opacity: .3; pointer-events: none; }
+
+.detail-modal-content {
+  padding: 0;
+}
+
+.detail-backdrop {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  background: var(--bg-2);
+}
+
+.detail-body { padding: 28px; }
+
+.detail-title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  letter-spacing: .04em;
+  margin-bottom: 8px;
+}
+
+.detail-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: .85rem;
+  color: var(--text-1);
+  margin-bottom: 16px;
+}
+
+.detail-genres { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.detail-overview { color: var(--text-0); line-height: 1.75; margin-bottom: 24px; font-size: .95rem; }
+.detail-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.close-btn {
+  position: absolute;
+  top: 16px; right: 16px;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  font-size: 1.2rem;
+  z-index: 10;
+  transition: background var(--transition);
+}
+.close-btn:hover { background: rgba(232,184,75,.3); }
+
+.empty-state {
+  grid-column: 1/-1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 80px 0;
+  color: var(--text-1);
+}
+
+.empty-state svg { opacity: .3; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/" class="nav-logo">STREAM<span>VAULT</span></a>
+  <div class="nav-links">
+    <a href="/" class="nav-link">Home</a>
+    <a href="/browse?type=movie" class="nav-link">Movies</a>
+    <a href="/browse?type=tv" class="nav-link">TV Shows</a>
+    <a href="/docs" class="nav-link">API Docs</a>
+  </div>
+  <div class="nav-search">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input id="nav-search" type="text" placeholder="Search...">
+  </div>
+</nav>
+
+<div class="page-wrap browse-wrap">
+  <div class="browse-header">
+    <h1 class="browse-title" id="browse-title">Browse</h1>
+  </div>
+
+  <div class="type-tabs">
+    <button class="type-tab" data-tab="movie" onclick="switchTab('movie')">Movies</button>
+    <button class="type-tab" data-tab="tv"    onclick="switchTab('tv')">TV Shows</button>
+    <button class="type-tab" data-tab="person" onclick="switchTab('person')">People</button>
+  </div>
+
+  <div class="controls" id="controls">
+    <div class="ctrl-group">
+      <div class="ctrl-label">Search</div>
+      <input id="search-input" class="ctrl-input" type="text" placeholder="Title, actor, keyword...">
+    </div>
+    <div class="ctrl-group">
+      <div class="ctrl-label">Sort by</div>
+      <select id="sort-select" class="ctrl-select">
+        <option value="">-- Sort --</option>
+        <option value="popular">Popular</option>
+        <option value="top_rated">Top Rated</option>
+        <option value="trending">Trending</option>
+        <option value="upcoming">Upcoming</option>
+        <option value="now_playing">Now Playing</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <div class="ctrl-label">Year</div>
+      <input id="year-input" class="ctrl-input" type="number" placeholder="e.g. 2023" min="1900" max="2030">
+    </div>
+    <div class="ctrl-group">
+      <div class="ctrl-label">Min Rating</div>
+      <input id="rating-input" class="ctrl-input" type="number" placeholder="1–10" min="0" max="10" step="0.5">
+    </div>
+    <div class="ctrl-group" style="justify-content:flex-end;flex-direction:row;align-items:flex-end">
+      <button class="btn btn-primary" onclick="runSearch(1)">Search</button>
+    </div>
+  </div>
+
+  <div class="results-grid" id="results"></div>
+
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal detail-modal-content" id="modal-inner" style="position:relative">
+    <button class="close-btn" onclick="document.getElementById('modal').classList.remove('open')">✕</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script src="/public/js/config.js"></script>
+<script src="/public/js/api.js"></script>
+<script src="/public/js/ui.js"></script>
+<script>
+var state = {
+  tab: 'movie',
+  page: 1,
+  totalPages: 1,
+  query: '',
+};
+
+var p = new URLSearchParams(location.search);
+if (p.get('q'))    document.getElementById('search-input').value = p.get('q');
+if (p.get('type')) state.tab = p.get('type');
+if (p.get('sort')) document.getElementById('sort-select').value = p.get('sort');
+
+switchTab(state.tab, false);
+
+async function runSearch(page) {
+  state.page  = page || 1;
+  state.query = document.getElementById('search-input').value.trim();
+  const sort  = document.getElementById('sort-select').value;
+  const year  = document.getElementById('year-input').value;
+  const minR  = document.getElementById('rating-input').value;
+  const key   = CONFIG.TMDB_KEY;
+
+  document.getElementById('results').innerHTML = renderSkeletons();
+
+  let data;
+  try {
+    if (state.query) {
+      const endpoint = state.tab === 'person' ? 'person' : state.tab === 'tv' ? 'tv' : 'movie';
+      const res = await fetch(`/api/search/${endpoint}?q=${encodeURIComponent(state.query)}&page=${state.page}&tmdb_key=${key}`);
+      const json = await res.json();
+      data = json.data;
+    } else if (state.tab === 'person') {
+      const res = await fetch(`/api/person/popular?page=${state.page}&tmdb_key=${key}`);
+      const json = await res.json();
+      data = json.data;
+    } else {
+      const sortPath = sort || 'popular';
+      const base = state.tab === 'tv' ? 'tv' : 'movie';
+      const res = await fetch(`/api/${base}/${sortPath}?page=${state.page}&year=${year}&min_rating=${minR}&tmdb_key=${key}`);
+      const json = await res.json();
+      data = json.data;
+    }
+
+    state.totalPages = Math.min(data?.total_pages || 1, 500);
+    render(data?.results || []);
+    renderPagination();
+  } catch (e) {
+    document.getElementById('results').innerHTML = `<div class="empty-state"><p>Error: ${e.message}</p></div>`;
+  }
+}
+
+function render(items) {
+  const el = document.getElementById('results');
+  if (!items.length) {
+    el.className = 'results-grid';
+    el.innerHTML = `<div class="empty-state">
+      <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <p>No results found.</p>
+    </div>`;
+    return;
+  }
+
+  if (state.tab === 'person') {
+    el.className = 'people-grid';
+    el.innerHTML = items.map(p => `
+      <div class="person-card" onclick="window.location='/person/${p.id}'">
+        <img class="person-img" src="${p.profile_path ? 'https://image.tmdb.org/t/p/w342'+p.profile_path : ''}" alt="${p.name}" loading="lazy">
+        <div class="person-name">${p.name}</div>
+        <div class="person-known">${p.known_for_department || ''}</div>
+      </div>
+    `).join('');
+  } else {
+    el.className = 'results-grid';
+    el.innerHTML = items.map(item => UI.cardHtml(item, state.tab, true)).join('');
+  }
+}
+
+function renderSkeletons() {
+  return Array(20).fill(0).map(() => `
+    <div class="card">
+      <div class="skeleton" style="aspect-ratio:2/3;width:100%"></div>
+      <div class="card-info">
+        <div class="skeleton" style="height:.8rem;width:80%;margin-bottom:6px"></div>
+        <div class="skeleton" style="height:.7rem;width:50%"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderPagination() {
+  const el = document.getElementById('pagination');
+  if (state.totalPages <= 1) { el.innerHTML = ''; return; }
+  const cur = state.page;
+  const max = state.totalPages;
+  const pages = [];
+
+  pages.push(1);
+  if (cur > 3)       pages.push('...');
+  for (let i = Math.max(2, cur-1); i <= Math.min(max-1, cur+1); i++) pages.push(i);
+  if (cur < max - 2) pages.push('...');
+  if (max > 1)       pages.push(max);
+
+  el.innerHTML = `
+    <button class="page-btn" onclick="runSearch(${cur-1})" ${cur<=1?'disabled':''}>‹</button>
+    ${pages.map(pg => pg === '...'
+      ? `<span style="color:var(--text-2);padding:0 4px">…</span>`
+      : `<button class="page-btn${pg===cur?' active':''}" onclick="runSearch(${pg})">${pg}</button>`
+    ).join('')}
+    <button class="page-btn" onclick="runSearch(${cur+1})" ${cur>=max?'disabled':''}>›</button>
+  `;
+}
+
+function switchTab(tab, run = true) {
+  state.tab = tab;
+  document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.getElementById('browse-title').textContent = tab === 'person' ? 'People' : tab === 'tv' ? 'TV Shows' : 'Movies';
+  const sortEl = document.getElementById('sort-select');
+  if (tab === 'tv') {
+    sortEl.innerHTML = `
+      <option value="">-- Sort --</option>
+      <option value="popular">Popular</option>
+      <option value="top_rated">Top Rated</option>
+      <option value="trending">Trending</option>
+      <option value="on_the_air">On The Air</option>
+    `;
+  } else {
+    sortEl.innerHTML = `
+      <option value="">-- Sort --</option>
+      <option value="popular">Popular</option>
+      <option value="top_rated">Top Rated</option>
+      <option value="trending">Trending</option>
+      <option value="upcoming">Upcoming</option>
+      <option value="now_playing">Now Playing</option>
+    `;
+  }
+  if (run) runSearch(1);
+}
+
+function openModal(id, type) {
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('modal-body').innerHTML = `<div style="padding:80px;display:flex;justify-content:center"><div class="spinner"></div></div>`;
+  const key = CONFIG.TMDB_KEY;
+  fetch(`/api/${type}/${id}?tmdb_key=${key}`)
+    .then(r => r.json())
+    .then(({ data: d }) => {
+      const isTv     = !!d.first_air_date;
+      const title    = d.title || d.name || '';
+      const year     = (d.release_date || d.first_air_date || '').slice(0,4);
+      const rating   = d.vote_average?.toFixed(1) || '';
+      const runtime  = d.runtime ? `${Math.floor(d.runtime/60)}h ${d.runtime%60}m` : '';
+      const backdrop = d.backdrop_path ? `https://image.tmdb.org/t/p/w1280${d.backdrop_path}` : '';
+      const genres   = (d.genres || []).map(g => `<span class="tag tag-accent">${g.name}</span>`).join('');
+      document.getElementById('modal-body').innerHTML = `
+        ${backdrop ? `<img class="detail-backdrop" src="${backdrop}" alt="${title}">` : ''}
+        <div class="detail-body">
+          <h2 class="detail-title">${title}</h2>
+          <div class="detail-meta">
+            ${year ? `<span>${year}</span>` : ''}
+            ${runtime ? `<span>${runtime}</span>` : ''}
+            ${rating ? `<span class="rating">⭐ ${rating}</span>` : ''}
+          </div>
+          ${genres ? `<div class="detail-genres">${genres}</div>` : ''}
+          ${d.overview ? `<p class="detail-overview">${d.overview}</p>` : ''}
+          <div class="detail-actions">
+            <a href="/watch?id=${d.id}${isTv?'&s=1&e=1':''}" class="btn btn-primary">
+              <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg>
+              Watch Now
+            </a>
+            <a href="/browse?id=${d.id}&type=${type}" class="btn btn-ghost">Full Details</a>
+          </div>
+        </div>
+      `;
+    });
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal')) {
+    document.getElementById('modal').classList.remove('open');
+  }
+}
+
+window.openModal = openModal;
+
+document.getElementById('nav-search').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    document.getElementById('search-input').value = e.target.value;
+    runSearch(1);
+  }
+});
+
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runSearch(1);
+});
+
+runSearch(1);
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/index.js" },
+    { "source": "/",           "destination": "/public/index.html" },
+    { "source": "/watch",      "destination": "/public/watch.html" },
+    { "source": "/browse",     "destination": "/public/browse.html" },
+    { "source": "/person/:id", "destination": "/public/person.html" },
+    { "source": "/docs",       "destination": "/public/docs.html" },
+    { "source": "/analytics",  "destination": "/public/analytics.html" }
+  ]
+}
