@@ -1,13 +1,13 @@
 'use strict';
 
-const fs   = require('fs');
+const fs = require('fs');
 const path = require('path');
 const https = require('https');
-const http  = require('http');
+const http = require('http');
 
 const REFERER = 'https://vidlink.pro/';
-const ORIGIN  = 'https://vidlink.pro';
-const UA      = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124';
+const ORIGIN = 'https://vidlink.pro';
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124';
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 
 const analytics = {
@@ -25,15 +25,14 @@ function trackEndpoint(name) {
   analytics.endpoints[name] = (analytics.endpoints[name] || 0) + 1;
 }
 
-// ── WASM singleton ────────────────────────────────────────────────────────────
-let wasmReady   = false;
+let wasmReady = false;
 let bootPromise = null;
 
 function bootWasm() {
   if (bootPromise) return bootPromise;
   bootPromise = (async () => {
-    globalThis.window   = globalThis;
-    globalThis.self     = globalThis;
+    globalThis.window = globalThis;
+    globalThis.self = globalThis;
     globalThis.document = { createElement: () => ({}), body: { appendChild: () => {} } };
 
     const sodium = require('libsodium-wrappers');
@@ -47,148 +46,200 @@ function bootWasm() {
     const { instance } = await WebAssembly.instantiate(wasmBuf, go.importObject);
     go.run(instance);
 
-    await new Promise(r => setTimeout(r, 500));
-    if (typeof globalThis.getAdv !== 'function') throw new Error('WASM boot failed: getAdv not found');
+    await new Promise(resolve => setTimeout(resolve, 500));
+    if (typeof globalThis.getAdv !== 'function') {
+      throw new Error('WASM boot failed: getAdv not found');
+    }
     wasmReady = true;
   })();
   return bootPromise;
 }
 
-// ── Stream resolver ───────────────────────────────────────────────────────────
 async function getStream(id, season, episode) {
+  if (!id) throw new Error('Missing content ID');
   await bootWasm();
+
   const token = globalThis.getAdv(String(id));
-  if (!token) throw new Error('Token generation failed');
+  if (!token) throw new Error('Stream token generation failed');
 
   const apiUrl = season
     ? `https://vidlink.pro/api/b/tv/${token}/${season}/${episode || 1}?multiLang=0`
     : `https://vidlink.pro/api/b/movie/${token}?multiLang=0`;
 
-  const res = await fetch(apiUrl, {
-    headers: { Referer: REFERER, Origin: ORIGIN, 'User-Agent': UA }
+  const response = await fetch(apiUrl, {
+    headers: {
+      Referer: REFERER,
+      Origin: ORIGIN,
+      'User-Agent': UA,
+      Accept: 'application/json,text/plain,*/*',
+    },
   });
-  if (!res.ok) throw new Error(`Upstream returned ${res.status}`);
-  const data = await res.json();
-  const playlist = data?.stream?.playlist;
-  if (!playlist) throw new Error('No playlist in upstream response');
+
+  if (!response.ok) {
+    throw new Error(`Stream provider returned HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  const playlist = data?.stream?.playlist || data?.playlist || data?.stream?.url || data?.url;
+  if (!playlist || typeof playlist !== 'string') {
+    throw new Error('Stream provider returned no playable playlist');
+  }
+
   return playlist;
 }
 
-// ── HLS proxy ────────────────────────────────────────────────────────────────
 function fetchUpstream(url, redirects = 0) {
   return new Promise((resolve, reject) => {
-    if (redirects > 5) return reject(new Error('Too many redirects'));
-    (url.startsWith('https') ? https : http).get(url, {
-      headers: { Referer: REFERER, Origin: ORIGIN, 'User-Agent': UA, Accept: '*/*' }
+    if (redirects > 8) return reject(new Error('Too many upstream redirects'));
+    let parsed;
+    try { parsed = new URL(url); } catch { return reject(new Error('Invalid stream URL')); }
+
+    const client = parsed.protocol === 'https:' ? https : http;
+    const request = client.get(url, {
+      headers: {
+        Referer: REFERER,
+        Origin: ORIGIN,
+        'User-Agent': UA,
+        Accept: '*/*',
+      },
     }, res => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        const loc = res.headers.location;
-        return resolve(fetchUpstream(
-          loc.startsWith('http') ? loc : new URL(loc, url).href,
-          redirects + 1
-        ));
+        const next = new URL(res.headers.location, url).href;
+        res.resume();
+        return resolve(fetchUpstream(next, redirects + 1));
       }
       resolve(res);
-    }).on('error', reject);
+    });
+    request.on('error', reject);
+    request.setTimeout(20000, () => request.destroy(new Error('Upstream request timed out')));
   });
 }
 
+function absoluteUrl(value, baseUrl) {
+  try { return new URL(value, baseUrl).href; } catch { return null; }
+}
+
 function rewriteM3u8(body, url) {
-  const base    = url.split('?')[0];
-  const baseDir = base.substring(0, base.lastIndexOf('/') + 1);
-  const origin  = new URL(url).origin;
   return body.split('\n').map(line => {
-    const t = line.trim();
-    if (!t || t.startsWith('#')) return line;
-    const abs = t.startsWith('http') ? t : t.startsWith('/') ? origin + t : baseDir + t;
-    return '/api/proxy?url=' + encodeURIComponent(abs);
+    const trimmed = line.trim();
+    if (!trimmed) return line;
+
+    if (trimmed.startsWith('#EXT-X-KEY:') || trimmed.startsWith('#EXT-X-MAP:')) {
+      return line.replace(/URI="([^"]+)"/i, (_, uri) => {
+        const absolute = absoluteUrl(uri, url);
+        return absolute ? `URI="/api/proxy?url=${encodeURIComponent(absolute)}"` : `URI="${uri}"`;
+      });
+    }
+
+    if (trimmed.startsWith('#')) return line;
+    const absolute = absoluteUrl(trimmed, url);
+    return absolute ? '/api/proxy?url=' + encodeURIComponent(absolute) : line;
   }).join('\n');
 }
 
-// ── TMDB fetch helper ─────────────────────────────────────────────────────────
 async function tmdb(endpoint, apiKey, params = {}) {
-  const qs  = new URLSearchParams({ api_key: apiKey, ...params }).toString();
-  const url = `${TMDB_BASE}${endpoint}?${qs}`;
-  const res = await fetch(url, { headers: { 'User-Agent': UA } });
-  if (!res.ok) throw new Error(`TMDB ${endpoint} returned ${res.status}`);
+  const qs = new URLSearchParams({ api_key: apiKey, ...params }).toString();
+  const response = await fetch(`${TMDB_BASE}${endpoint}?${qs}`, {
+    headers: { 'User-Agent': UA, Accept: 'application/json' },
+  });
+  if (!response.ok) throw new Error(`TMDB returned HTTP ${response.status}`);
   analytics.tmdbHits++;
-  return res.json();
+  return response.json();
 }
 
-// ── JSON helpers ──────────────────────────────────────────────────────────────
 function ok(res, data, status = 200) {
   res.statusCode = status;
-  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify({ success: true, data }));
 }
 
 function err(res, message, status = 400) {
   analytics.errors++;
   res.statusCode = status;
-  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify({ success: false, error: message }));
 }
 
-// ── Router ────────────────────────────────────────────────────────────────────
+function requireKey(res, key) {
+  if (!key) {
+    err(res, 'TMDB API key required', 401);
+    return false;
+  }
+  return true;
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-TMDB-Key');
+  res.setHeader('Cache-Control', 'no-store');
 
-  if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end(); }
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204;
+    return res.end();
+  }
 
   const parsed = new URL(req.url, 'http://localhost');
-  const route  = parsed.pathname.replace(/\/+$/, '');
-  const q      = Object.fromEntries(parsed.searchParams);
-
+  const route = parsed.pathname.replace(/\/+$/, '') || '/';
+  const q = Object.fromEntries(parsed.searchParams);
   const tmdbKey = req.headers['x-tmdb-key'] || q.tmdb_key;
 
   try {
-    // ── GET /api/stream ──────────────────────────────────────────────────────
-    if (route === '/api/stream' || route === '/api') {
+    // Direct stream resolver. This is the same contract used by the supplied
+    // working movie-scraper: { url: "https://...m3u8" }.
+    if (route === '/api' || route === '/api/stream') {
       trackEndpoint('stream');
       if (!q.id) return err(res, 'Missing required param: id');
       const url = await getStream(q.id, q.s || q.season, q.e || q.episode);
       analytics.streams++;
-      return ok(res, { stream_url: url, proxied_url: `/api/proxy?url=${encodeURIComponent(url)}` });
+      return ok(res, {
+        url,
+        stream_url: url,
+        proxied_url: `/api/proxy?url=${encodeURIComponent(url)}`,
+      });
     }
 
-    // ── GET /api/proxy ───────────────────────────────────────────────────────
     if (route === '/api/proxy') {
       trackEndpoint('proxy');
       if (!q.url) return err(res, 'Missing required param: url');
-      const url      = decodeURIComponent(q.url);
-      const upstream = await fetchUpstream(url);
-      const ct       = (upstream.headers['content-type'] || '').toLowerCase();
-      const isM3u8   = ct.includes('mpegurl') || ct.includes('m3u8') || /\.m3u8?(\?|$)/i.test(url.split('?')[0]);
-      analytics.proxied++;
+      const upstream = await fetchUpstream(q.url);
+      const status = upstream.statusCode || 502;
+      const contentType = String(upstream.headers['content-type'] || '').toLowerCase();
+      const isM3u8 = contentType.includes('mpegurl') || contentType.includes('m3u8') || /\.m3u8?(\?|$)/i.test(q.url);
 
+      if (status >= 400) {
+        res.statusCode = status;
+        res.setHeader('Content-Type', contentType || 'text/plain');
+        return upstream.pipe(res);
+      }
+
+      analytics.proxied++;
       if (isM3u8) {
         const chunks = [];
         for await (const chunk of upstream) chunks.push(chunk);
         const body = Buffer.concat(chunks).toString('utf8');
-        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-        return res.end(rewriteM3u8(body, url));
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-store');
+        return res.end(rewriteM3u8(body, q.url));
       }
 
-      res.setHeader('Content-Type', ct || 'application/octet-stream');
+      res.statusCode = status;
+      res.setHeader('Content-Type', contentType || 'application/octet-stream');
       if (upstream.headers['content-length']) res.setHeader('Content-Length', upstream.headers['content-length']);
-      res.statusCode = upstream.statusCode;
       return upstream.pipe(res);
     }
 
-    // ── GET /api/health ──────────────────────────────────────────────────────
     if (route === '/api/health') {
       trackEndpoint('health');
       return ok(res, {
         status: 'ok',
         wasm_ready: wasmReady,
         uptime_seconds: Math.floor((Date.now() - analytics.startTime) / 1000),
-        version: '2.0.0',
+        version: '3.0.0',
       });
     }
 
-    // ── GET /api/analytics ───────────────────────────────────────────────────
     if (route === '/api/analytics') {
       trackEndpoint('analytics');
       return ok(res, {
@@ -200,236 +251,149 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // ── TMDB routes (all require tmdb_key or X-TMDB-Key header) ─────────────
-    if (route.startsWith('/api/tmdb') || route.startsWith('/api/movie') || route.startsWith('/api/tv') || route.startsWith('/api/person') || route.startsWith('/api/search')) {
-      if (!tmdbKey) return err(res, 'TMDB API key required. Pass X-TMDB-Key header or ?tmdb_key=');
+    if (!requireKey(res, tmdbKey)) return;
 
-      // GET /api/movie/:id
-      if (route.match(/^\/api\/movie\/\d+$/)) {
-        trackEndpoint('movie_detail');
-        const id   = route.split('/').pop();
-        const data = await tmdb(`/movie/${id}`, tmdbKey, { append_to_response: 'credits,videos,images,recommendations,similar,release_dates' });
-        return ok(res, data);
+    // Movie endpoints
+    let m = route.match(/^\/api\/movie\/(\d+)$/);
+    if (m) {
+      trackEndpoint('movie_detail');
+      return ok(res, await tmdb(`/movie/${m[1]}`, tmdbKey, { append_to_response: 'credits,videos,images,recommendations,similar,release_dates' }));
+    }
+
+    m = route.match(/^\/api\/movie\/(\d+)\/stream-info$/);
+    if (m) {
+      trackEndpoint('movie_stream_info');
+      const id = m[1];
+      const detailPromise = tmdb(`/movie/${id}`, tmdbKey, { append_to_response: 'credits,videos,images,recommendations,similar,release_dates' });
+      const streamPromise = getStream(id).catch(e => ({ error: e.message }));
+      const [detail, streamResult] = await Promise.all([detailPromise, streamPromise]);
+      const streamUrl = typeof streamResult === 'string' ? streamResult : null;
+      if (streamUrl) analytics.streams++;
+      return ok(res, {
+        movie: detail,
+        stream_url: streamUrl,
+        url: streamUrl,
+        proxied_url: streamUrl ? `/api/proxy?url=${encodeURIComponent(streamUrl)}` : null,
+        stream_error: streamUrl ? null : streamResult.error,
+      });
+    }
+
+    const movieList = {
+      '/popular': '/movie/popular',
+      '/trending': '/trending/movie/week',
+      '/top_rated': '/movie/top_rated',
+      '/now_playing': '/movie/now_playing',
+      '/upcoming': '/movie/upcoming',
+    };
+    if (route.startsWith('/api/movie/')) {
+      const suffix = route.slice('/api/movie'.length);
+      if (movieList[suffix]) {
+        trackEndpoint('movie_' + suffix.slice(1));
+        return ok(res, await tmdb(movieList[suffix], tmdbKey, { page: q.page || 1, region: q.region || '' }));
       }
-
-      // GET /api/movie/:id/stream-info
-      if (route.match(/^\/api\/movie\/\d+\/stream-info$/)) {
-        trackEndpoint('movie_stream_info');
-        const id   = route.split('/')[3];
-        const [detail, stream] = await Promise.all([
-          tmdb(`/movie/${id}`, tmdbKey),
-          getStream(id).catch(() => null),
-        ]);
-        analytics.streams++;
-        return ok(res, {
-          movie: detail,
-          stream_url: stream,
-          proxied_url: stream ? `/api/proxy?url=${encodeURIComponent(stream)}` : null,
-        });
-      }
-
-      // GET /api/movie/popular
-      if (route === '/api/movie/popular') {
-        trackEndpoint('movie_popular');
-        const data = await tmdb('/movie/popular', tmdbKey, { page: q.page || 1, region: q.region || '' });
-        return ok(res, data);
-      }
-
-      // GET /api/movie/top_rated
-      if (route === '/api/movie/top_rated') {
-        trackEndpoint('movie_top_rated');
-        const data = await tmdb('/movie/top_rated', tmdbKey, { page: q.page || 1 });
-        return ok(res, data);
-      }
-
-      // GET /api/movie/trending
-      if (route === '/api/movie/trending') {
-        trackEndpoint('movie_trending');
-        const data = await tmdb('/trending/movie/week', tmdbKey, { page: q.page || 1 });
-        return ok(res, data);
-      }
-
-      // GET /api/movie/upcoming
-      if (route === '/api/movie/upcoming') {
-        trackEndpoint('movie_upcoming');
-        const data = await tmdb('/movie/upcoming', tmdbKey, { page: q.page || 1, region: q.region || '' });
-        return ok(res, data);
-      }
-
-      // GET /api/movie/now_playing
-      if (route === '/api/movie/now_playing') {
-        trackEndpoint('movie_now_playing');
-        const data = await tmdb('/movie/now_playing', tmdbKey, { page: q.page || 1, region: q.region || '' });
-        return ok(res, data);
-      }
-
-      // GET /api/movie/genres
-      if (route === '/api/movie/genres') {
+      if (suffix === '/genres') {
         trackEndpoint('movie_genres');
-        const data = await tmdb('/genre/movie/list', tmdbKey, { language: q.language || 'en' });
-        return ok(res, data);
+        return ok(res, await tmdb('/genre/movie/list', tmdbKey, { language: q.language || 'en' }));
       }
-
-      // GET /api/movie/discover
-      if (route === '/api/movie/discover') {
+      if (suffix === '/discover') {
         trackEndpoint('movie_discover');
-        const params = {
+        return ok(res, await tmdb('/discover/movie', tmdbKey, {
           page: q.page || 1,
           sort_by: q.sort_by || 'popularity.desc',
           with_genres: q.genres || '',
           'vote_average.gte': q.min_rating || '',
-          'primary_release_year': q.year || '',
+          primary_release_year: q.year || '',
           with_original_language: q.language || '',
-        };
-        const data = await tmdb('/discover/movie', tmdbKey, params);
-        return ok(res, data);
+        }));
       }
+    }
 
-      // GET /api/tv/:id
-      if (route.match(/^\/api\/tv\/\d+$/)) {
-        trackEndpoint('tv_detail');
-        const id   = route.split('/').pop();
-        const data = await tmdb(`/tv/${id}`, tmdbKey, { append_to_response: 'credits,videos,images,recommendations,similar' });
-        return ok(res, data);
+    // TV endpoints
+    m = route.match(/^\/api\/tv\/(\d+)$/);
+    if (m) {
+      trackEndpoint('tv_detail');
+      return ok(res, await tmdb(`/tv/${m[1]}`, tmdbKey, { append_to_response: 'credits,videos,images,recommendations,similar' }));
+    }
+
+    m = route.match(/^\/api\/tv\/(\d+)\/season\/(\d+)$/);
+    if (m) {
+      trackEndpoint('tv_season');
+      return ok(res, await tmdb(`/tv/${m[1]}/season/${m[2]}`, tmdbKey));
+    }
+
+    m = route.match(/^\/api\/tv\/(\d+)\/season\/(\d+)\/episode\/(\d+)\/stream$/);
+    if (m) {
+      trackEndpoint('tv_episode_stream');
+      const [episodeInfo, streamResult] = await Promise.all([
+        tmdb(`/tv/${m[1]}/season/${m[2]}/episode/${m[3]}`, tmdbKey),
+        getStream(m[1], m[2], m[3]).catch(e => ({ error: e.message })),
+      ]);
+      const streamUrl = typeof streamResult === 'string' ? streamResult : null;
+      if (streamUrl) analytics.streams++;
+      return ok(res, {
+        episode: episodeInfo,
+        stream_url: streamUrl,
+        url: streamUrl,
+        proxied_url: streamUrl ? `/api/proxy?url=${encodeURIComponent(streamUrl)}` : null,
+        stream_error: streamUrl ? null : streamResult.error,
+      });
+    }
+
+    const tvList = {
+      '/popular': '/tv/popular',
+      '/top_rated': '/tv/top_rated',
+      '/trending': '/trending/tv/week',
+      '/on_the_air': '/tv/on_the_air',
+    };
+    if (route.startsWith('/api/tv/')) {
+      const suffix = route.slice('/api/tv'.length);
+      if (tvList[suffix]) {
+        trackEndpoint('tv_' + suffix.slice(1));
+        return ok(res, await tmdb(tvList[suffix], tmdbKey, { page: q.page || 1 }));
       }
-
-      // GET /api/tv/:id/season/:season
-      if (route.match(/^\/api\/tv\/\d+\/season\/\d+$/)) {
-        trackEndpoint('tv_season');
-        const parts    = route.split('/');
-        const tvId     = parts[3];
-        const seasonNo = parts[5];
-        const data     = await tmdb(`/tv/${tvId}/season/${seasonNo}`, tmdbKey);
-        return ok(res, data);
-      }
-
-      // GET /api/tv/:id/season/:season/episode/:episode/stream
-      if (route.match(/^\/api\/tv\/\d+\/season\/\d+\/episode\/\d+\/stream$/)) {
-        trackEndpoint('tv_episode_stream');
-        const parts   = route.split('/');
-        const tvId    = parts[3];
-        const season  = parts[5];
-        const episode = parts[7];
-        const [detail, stream] = await Promise.all([
-          tmdb(`/tv/${tvId}/season/${season}/episode/${episode}`, tmdbKey),
-          getStream(tvId, season, episode),
-        ]);
-        analytics.streams++;
-        return ok(res, {
-          episode: detail,
-          stream_url: stream,
-          proxied_url: `/api/proxy?url=${encodeURIComponent(stream)}`,
-        });
-      }
-
-      // GET /api/tv/popular
-      if (route === '/api/tv/popular') {
-        trackEndpoint('tv_popular');
-        const data = await tmdb('/tv/popular', tmdbKey, { page: q.page || 1 });
-        return ok(res, data);
-      }
-
-      // GET /api/tv/top_rated
-      if (route === '/api/tv/top_rated') {
-        trackEndpoint('tv_top_rated');
-        const data = await tmdb('/tv/top_rated', tmdbKey, { page: q.page || 1 });
-        return ok(res, data);
-      }
-
-      // GET /api/tv/trending
-      if (route === '/api/tv/trending') {
-        trackEndpoint('tv_trending');
-        const data = await tmdb('/trending/tv/week', tmdbKey, { page: q.page || 1 });
-        return ok(res, data);
-      }
-
-      // GET /api/tv/on_the_air
-      if (route === '/api/tv/on_the_air') {
-        trackEndpoint('tv_on_the_air');
-        const data = await tmdb('/tv/on_the_air', tmdbKey, { page: q.page || 1 });
-        return ok(res, data);
-      }
-
-      // GET /api/tv/genres
-      if (route === '/api/tv/genres') {
+      if (suffix === '/genres') {
         trackEndpoint('tv_genres');
-        const data = await tmdb('/genre/tv/list', tmdbKey, { language: q.language || 'en' });
-        return ok(res, data);
+        return ok(res, await tmdb('/genre/tv/list', tmdbKey, { language: q.language || 'en' }));
       }
-
-      // GET /api/tv/discover
-      if (route === '/api/tv/discover') {
+      if (suffix === '/discover') {
         trackEndpoint('tv_discover');
-        const data = await tmdb('/discover/tv', tmdbKey, {
+        return ok(res, await tmdb('/discover/tv', tmdbKey, {
           page: q.page || 1,
           sort_by: q.sort_by || 'popularity.desc',
           with_genres: q.genres || '',
           'vote_average.gte': q.min_rating || '',
           first_air_date_year: q.year || '',
-        });
-        return ok(res, data);
-      }
-
-      // GET /api/person/:id
-      if (route.match(/^\/api\/person\/\d+$/)) {
-        trackEndpoint('person_detail');
-        const id   = route.split('/').pop();
-        const data = await tmdb(`/person/${id}`, tmdbKey, { append_to_response: 'movie_credits,tv_credits,images,external_ids' });
-        return ok(res, data);
-      }
-
-      // GET /api/person/popular
-      if (route === '/api/person/popular') {
-        trackEndpoint('person_popular');
-        const data = await tmdb('/person/popular', tmdbKey, { page: q.page || 1 });
-        return ok(res, data);
-      }
-
-      // GET /api/search/multi
-      if (route === '/api/search/multi') {
-        trackEndpoint('search_multi');
-        if (!q.q && !q.query) return err(res, 'Missing param: q');
-        const data = await tmdb('/search/multi', tmdbKey, { query: q.q || q.query, page: q.page || 1, include_adult: false });
-        return ok(res, data);
-      }
-
-      // GET /api/search/movie
-      if (route === '/api/search/movie') {
-        trackEndpoint('search_movie');
-        if (!q.q && !q.query) return err(res, 'Missing param: q');
-        const data = await tmdb('/search/movie', tmdbKey, { query: q.q || q.query, page: q.page || 1, year: q.year || '' });
-        return ok(res, data);
-      }
-
-      // GET /api/search/tv
-      if (route === '/api/search/tv') {
-        trackEndpoint('search_tv');
-        if (!q.q && !q.query) return err(res, 'Missing param: q');
-        const data = await tmdb('/search/tv', tmdbKey, { query: q.q || q.query, page: q.page || 1 });
-        return ok(res, data);
-      }
-
-      // GET /api/search/person
-      if (route === '/api/search/person') {
-        trackEndpoint('search_person');
-        if (!q.q && !q.query) return err(res, 'Missing param: q');
-        const data = await tmdb('/search/person', tmdbKey, { query: q.q || q.query, page: q.page || 1 });
-        return ok(res, data);
-      }
-
-      // GET /api/tmdb/collection/:id
-      if (route.match(/^\/api\/tmdb\/collection\/\d+$/)) {
-        trackEndpoint('collection');
-        const id   = route.split('/').pop();
-        const data = await tmdb(`/collection/${id}`, tmdbKey);
-        return ok(res, data);
+          with_original_language: q.language || '',
+        }));
       }
     }
 
-    // ── GET /api (no route match) ────────────────────────────────────────────
-    return err(res, `Unknown route: ${route}. See /api/docs`, 404);
+    // People and search
+    m = route.match(/^\/api\/person\/(\d+)$/);
+    if (m) {
+      trackEndpoint('person_detail');
+      return ok(res, await tmdb(`/person/${m[1]}`, tmdbKey, { append_to_response: 'combined_credits,images' }));
+    }
+    if (route === '/api/person/popular') {
+      trackEndpoint('person_popular');
+      return ok(res, await tmdb('/person/popular', tmdbKey, { page: q.page || 1 }));
+    }
 
+    const searches = {
+      '/api/search/multi': '/search/multi',
+      '/api/search/movie': '/search/movie',
+      '/api/search/tv': '/search/tv',
+      '/api/search/person': '/search/person',
+    };
+    if (searches[route]) {
+      trackEndpoint(route.slice('/api/search/'.length));
+      if (!q.q) return err(res, 'Missing required param: q');
+      return ok(res, await tmdb(searches[route], tmdbKey, { query: q.q, page: q.page || 1, include_adult: 'false' }));
+    }
+
+    return err(res, 'Route not found', 404);
   } catch (e) {
-    return err(res, e.message, 500);
+    console.error('[SeeTv API]', e);
+    return err(res, e?.message || 'Internal server error', 500);
   }
 };
